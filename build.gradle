@@ -1,0 +1,25 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm' version '1.3.31'
+}
+apply plugin: 'kotlin'
+apply plugin: 'application'
+repositories {
+    mavenCentral()
+    maven { url "https://jitpack.io" }
+}
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
+    implementation "org.web3j:core:4.3.0"
+    implementation "com.github.tinder.scarlet:scarlet:0.1.7"
+    implementation "com.github.tinder.scarlet:scarlet-message-adapter-moshi:0.1.7"
+    implementation "com.github.tinder.scarlet:scarlet-stream-adapter-rxjava2:0.1.7"
+    implementation "com.github.tinder.scarlet:scarlet-websocket-okhttp:0.1.7"
+}
+compileKotlin {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+}
+application {
+    mainClassName = 'daidaidai.Main'
+}
