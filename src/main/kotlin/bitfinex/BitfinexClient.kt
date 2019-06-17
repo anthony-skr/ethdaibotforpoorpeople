@@ -29,14 +29,14 @@ class BitfinexClient(private val repo: OrderBookRepository) {
     }
 
     private val okHttp = OkHttpClient.Builder()
-        .build()
-        .newWebSocketFactory("wss://api.bitfinex.com/ws")
+            .build()
+            .newWebSocketFactory("wss://api.bitfinex.com/ws")
 
     private val scarlet = Scarlet.Builder()
-        .webSocketFactory(okHttp)
-        .addMessageAdapterFactory(MoshiMessageAdapter.Factory())
-        .addStreamAdapterFactory(RxJava2StreamAdapterFactory())
-        .build()
+            .webSocketFactory(okHttp)
+            .addMessageAdapterFactory(MoshiMessageAdapter.Factory())
+            .addStreamAdapterFactory(RxJava2StreamAdapterFactory())
+            .build()
 
     private val client = scarlet.create<BitfinexPublicApi>()
     private val channelPair = ConcurrentHashMap<String, OfferPair>()
@@ -45,48 +45,48 @@ class BitfinexClient(private val repo: OrderBookRepository) {
 
     fun listen() {
         client.observeWebSocketEvent().subscribeBy(
-            onNext = ::onEvent,
-            onComplete = {},
-            onError = { t -> Logs.error(t, TAG, "observe web socket events") }
+                onNext = ::onEvent,
+                onComplete = {},
+                onError = { t -> Logs.error(t, TAG, "observe web socket events") }
         )
     }
 
     private fun subscribeOffer(pair: OfferPair) =
-        Single.fromCallable { callSubscribeOffer(pair) }
-            .flatMap { receiveConfirmation() }
-            .doOnSuccess { confirm ->
-                Logs.info(TAG, "subscribed to $pair (${confirm.chanId})")
-                channelPair[confirm.chanId!!] = pair
-            }
+            Single.fromCallable { callSubscribeOffer(pair) }
+                    .flatMap { receiveConfirmation() }
+                    .doOnSuccess { confirm ->
+                        Logs.info(TAG, "subscribed to $pair (${confirm.chanId})")
+                        channelPair[confirm.chanId!!] = pair
+                    }
 
     private fun callSubscribeOffer(pair: OfferPair) {
         client.subscribeOfferBooks(
-            OfferSubscription(
-                event = OfferSubscriptionEvent.SUBSCRIBE.value,
-                channel = Channel.BOOK.value,
-                pair = pair.value,
-                freq = "F0",
-                prec = "P0",
-                length = "25"
-            )
+                OfferSubscription(
+                        event = OfferSubscriptionEvent.SUBSCRIBE.value,
+                        channel = Channel.BOOK.value,
+                        pair = pair.value,
+                        freq = "F0",
+                        prec = "P0",
+                        length = "25"
+                )
         )
     }
 
     private fun receiveConfirmation() = client.receiveOfferBooks()
-        .filter { msg -> msg.channel == Channel.BOOK.value }
-        .filter { msg -> msg.event == OfferSubscriptionEvent.SUBSCRIBED.value }
-        .timeout(10, TimeUnit.SECONDS)
-        .firstOrError()
+            .filter { msg -> msg.channel == Channel.BOOK.value }
+            .filter { msg -> msg.event == OfferSubscriptionEvent.SUBSCRIBED.value }
+            .timeout(10, TimeUnit.SECONDS)
+            .firstOrError()
 
     private fun onEvent(ev: WebSocket.Event) {
         when (ev) {
             is WebSocket.Event.OnConnectionOpened<*> -> {
                 Logs.info(TAG, "connection bitfinex open")
                 subscribeOffer(OfferPair.ETHUSD)
-                    .flatMap { subscribeOffer(OfferPair.DAIUSD) }
-                    .subscribeBy(
-                        onSuccess = { Logs.info(TAG, "subscribe OK") },
-                        onError = { t -> Logs.error(t, TAG, "error subscribe") })
+                        .flatMap { subscribeOffer(OfferPair.DAIUSD) }
+                        .subscribeBy(
+                                onSuccess = { Logs.info(TAG, "subscribe OK") },
+                                onError = { t -> Logs.error(t, TAG, "error subscribe") })
             }
             is WebSocket.Event.OnConnectionClosing -> {
                 Logs.info(TAG, "connection bitfinex closing...")
@@ -125,22 +125,12 @@ class BitfinexClient(private val repo: OrderBookRepository) {
         }
     }
 
-    private fun onPriceUpdate(update: OfferPairPriceUpdate) {
-        val pair = channelPair[update.channelId] ?: return
-        when {
-            pair == OfferPair.ETHUSD && update.offerPrice.amount > 0.0 -> {
-                repo.bitfinexETHUSD.putBid(update.offerPrice)
-            }
-            pair == OfferPair.ETHUSD -> {
-                repo.bitfinexETHUSD.putAsk(update.offerPrice.copyAbsoluteAmount())
-            }
-
-            pair == OfferPair.DAIUSD && update.offerPrice.amount > 0.0 -> {
-                repo.bitfinexDAIUSD.putBid(update.offerPrice)
-            }
-            pair == OfferPair.DAIUSD -> {
-                repo.bitfinexDAIUSD.putAsk(update.offerPrice.copyAbsoluteAmount())
-            }
+    private fun onPriceUpdate(update: OfferPairPriceUpdate) = when {
+        channelPair[update.channelId] == OfferPair.ETHUSD && update.offerPrice.amount > 0.0 -> repo.bitfinexETHUSD.putBid(update.offerPrice)
+        channelPair[update.channelId] == OfferPair.ETHUSD -> repo.bitfinexETHUSD.putAsk(update.offerPrice.copyAbsoluteAmount())
+        channelPair[update.channelId] == OfferPair.DAIUSD && update.offerPrice.amount > 0.0 -> repo.bitfinexDAIUSD.putBid(update.offerPrice)
+        channelPair[update.channelId] == OfferPair.DAIUSD -> repo.bitfinexDAIUSD.putAsk(update.offerPrice.copyAbsoluteAmount())
+        else -> {
         }
     }
 }

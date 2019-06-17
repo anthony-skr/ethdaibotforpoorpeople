@@ -11,12 +11,10 @@ enum class CryptoCurrency(val address: String) {
     UNKNOWN("");
 
     companion object {
-        fun get(address: Address): CryptoCurrency {
-            return when (address.toString()) {
-                WETH.address -> CryptoCurrency.WETH
-                DAI.address -> CryptoCurrency.DAI
-                else -> CryptoCurrency.UNKNOWN
-            }
+        fun get(address: Address): CryptoCurrency = when (address.toString()) {
+            WETH.address -> WETH
+            DAI.address -> DAI
+            else -> UNKNOWN
         }
     }
 }
